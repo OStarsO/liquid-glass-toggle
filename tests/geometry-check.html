@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>geometry check</title>
+<link rel="stylesheet" href="../src/liquid-glass-toggle.css" />
+<style>body{background:#111;color:#eee;font:13px ui-monospace,monospace;padding:20px}</style>
+</head>
+<body>
+<label class="lg-switch lg-switch--sm"><input type="checkbox" checked /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch lg-switch--sm" data-case="sm-off"><input type="checkbox" /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch" data-case="md-on"><input type="checkbox" checked /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch" data-case="md-off"><input type="checkbox" /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch lg-switch--lg" data-case="lg-on"><input type="checkbox" checked /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch lg-switch--lg" data-case="lg-off"><input type="checkbox" /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch lg-switch--xl" data-case="custom" style="--lg-w:200px;--lg-h:116px;--lg-thumb-w:116px"><input type="checkbox" checked /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch is-pressing" data-case="press-on"><input type="checkbox" checked /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch is-pressing" data-case="press-off"><input type="checkbox" /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<label class="lg-switch lg-switch--sm is-pressing" data-case="press-sm" style="--lg-press:8px;--lg-press-shorten:10px"><input type="checkbox" checked /><span class="lg-switch__track"><span class="lg-switch__thumb"></span></span></label>
+<pre id="out">pending</pre>
+<script>
+  const out = [];
+  document.querySelectorAll('.lg-switch').forEach((el, i) => {
+    const tr = el.querySelector('.lg-switch__track');
+    const th = el.querySelector('.lg-switch__thumb');
+    const cs = getComputedStyle(tr);
+    const bw = parseFloat(cs.borderLeftWidth) || 0;
+    const r = tr.getBoundingClientRect();
+    const t = th.getBoundingClientRect();
+    const name = el.dataset.case || ('sm-on' + i);
+    const state = el.querySelector('input').checked ? 'ON ' : 'OFF';
+    const overflow = (t.right > r.right - bw + 0.01) || (t.left < r.left + bw - 0.01) ? 'OVERFLOW' : 'ok';
+    out.push([
+      name.padEnd(8),
+      state,
+      'track=' + r.width.toFixed(2) + 'x' + r.height.toFixed(2),
+      'thumb=' + t.width.toFixed(2) + 'x' + t.height.toFixed(2),
+      'gapL=' + (t.left - r.left - bw).toFixed(2),
+      'gapR=' + (r.right - bw - t.right).toFixed(2),
+      'gapT=' + (t.top - r.top - bw).toFixed(2),
+      'gapB=' + (r.bottom - bw - t.bottom).toFixed(2),
+      overflow
+    ].join(' '));
+  });
+  document.getElementById('out').textContent = 'RESULT_BEGIN\n' + out.join('\n') + '\nRESULT_END';
+</script>
+</body>
+</html>
