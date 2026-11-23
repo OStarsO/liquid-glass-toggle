@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Liquid Glass Toggle — iOS 26 液态玻璃开关</title>
+<meta name="description" content="纯 CSS 实现的 iOS 26 液态玻璃开关：按下时滑块液化收缩、玻璃化，并贴合轨道内边缘。零依赖，可键盘操作。" />
+<meta name="theme-color" content="#090a0d" />
+<link rel="stylesheet" href="src/liquid-glass-toggle.css" />
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    color-scheme: dark;
+    --ink: #f4f6fa;
+    --muted: rgba(244, 246, 250, 0.58);
+    --faint: rgba(244, 246, 250, 0.34);
+    --glass: rgba(255, 255, 255, 0.055);
+    --glass-strong: rgba(255, 255, 255, 0.09);
+    --stroke: rgba(255, 255, 255, 0.13);
+    --radius: 26px;
+    --wp: radial-gradient(1200px 700px at 18% 8%, rgba(124, 92, 255, 0.45), transparent 60%),
+          radial-gradient(900px 700px at 85% 20%, rgba(0, 200, 255, 0.32), transparent 62%),
+          radial-gradient(1000px 800px at 60% 100%, rgba(255, 72, 148, 0.3), transparent 65%),
+          linear-gradient(180deg, #14172a 0%, #080910 60%, #05060a 100%);
+  }
+
+  body[data-wp="sunset"] {
+    --wp: radial-gradient(900px 700px at 12% 12%, rgba(255, 138, 61, 0.5), transparent 60%),
+          radial-gradient(1000px 800px at 92% 18%, rgba(255, 61, 129, 0.42), transparent 62%),
+          radial-gradient(900px 700px at 50% 105%, rgba(80, 60, 200, 0.42), transparent 66%),
+          linear-gradient(180deg, #2a1220 0%, #120a12 60%, #070508 100%);
+  }
+
+  body[data-wp="forest"] {
+    --wp: radial-gradient(1000px 700px at 15% 10%, rgba(0, 214, 143, 0.34), transparent 62%),
+          radial-gradient(900px 800px at 88% 30%, rgba(0, 168, 255, 0.22), transparent 64%),
+          radial-gradient(900px 700px at 45% 100%, rgba(120, 255, 190, 0.16), transparent 60%),
+          linear-gradient(180deg, #0b1a16 0%, #06100d 60%, #040806 100%);
+  }
+
+  body[data-wp="mono"] {
+    --wp: radial-gradient(900px 700px at 20% 10%, rgba(255, 255, 255, 0.14), transparent 62%),
+          radial-gradient(800px 700px at 85% 22%, rgba(255, 255, 255, 0.09), transparent 62%),
+          linear-gradient(180deg, #1a1c22 0%, #0b0c10 60%, #06070a 100%);
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+                 "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--wp);
+    background-attachment: fixed;
+    transition: background 0.8s ease;
+    padding: 56px 24px 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 细颗粒，让玻璃有可折射的细节 */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.32;
+    z-index: 0;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+
+  .shell { width: 100%; max-width: 980px; position: relative; z-index: 1; display: grid; gap: 40px; }
+
+  /* ---------- 头部 ---------- */
+  header { display: grid; gap: 14px; text-align: center; }
+
+  .eyebrow {
+    justify-self: center;
+    font-size: 11.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--faint);
+    border: 1px solid var(--stroke);
+    background: var(--glass);
+    padding: 6px 14px;
+    border-radius: 999px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  h1 {
+    font-size: clamp(30px, 6vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    background: linear-gradient(180deg, #ffffff 20%, rgba(255, 255, 255, 0.62) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .sub { color: var(--muted); font-size: 15px; line-height: 1.7; max-width: 640px; justify-self: center; }
+
+  /* ---------- 卡片 ---------- */
+  .card {
+    position: relative;
+    border-radius: var(--radius);
+    border: 1px solid var(--stroke);
+    background: var(--glass);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 24px 60px rgba(0, 0, 0, 0.42);
+    padding: 28px;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 30%);
+  }
+
+  .card > * { position: relative; }
+
+  .card h2 {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 22px;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero { display: grid; gap: 26px; justify-items: center; text-align: center; padding: 44px 28px 40px; }
+
+  .hero-stage {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    padding: 34px 0 30px;
+    border-radius: 20px;
+    background:
+      radial-gradient(60% 120% at 50% 0%, rgba(255, 255, 255, 0.1), transparent 70%),
+      rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .state {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .state strong { color: #7ef0a4; font-weight: 600; letter-spacing: 0.1em; }
+  .state[data-on="0"] strong { color: var(--faint); }
+
+  .hint { font-size: 12px; color: var(--faint); letter-spacing: 0.02em; }
+
+  /* ---------- 尺寸行 ---------- */
+  .sizes { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 34px 44px; }
+
+  .size { display: grid; justify-items: center; gap: 14px; }
+  .size span { font-size: 12px; color: var(--faint); letter-spacing: 0.06em; }
+
+  /* ---------- 设置列表 ---------- */
+  .rows { display: grid; gap: 4px; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    transition: background 0.25s ease;
+  }
+
+  .row:hover { background: rgba(255, 255, 255, 0.045); }
+
+  .row + .row { border-top: 1px solid rgba(255, 255, 255, 0.055); }
+
+  .icon {
+    width: 36px; height: 36px;
+    flex: 0 0 auto;
+    border-radius: 11px;
+    display: grid; place-items: center;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 15px;
+  }
+
+  .row-label { flex: 1 1 auto; display: grid; gap: 3px; }
+  .row-label b { font-size: 15px; font-weight: 500; }
+  .row-label small { font-size: 12.5px; color: var(--faint); }
+
+  /* ---------- 控制条 ---------- */
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+  .chip {
+    font: inherit;
+    font-size: 13px;
+    color: var(--muted);
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--stroke);
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s, border-color 0.2s, transform 0.15s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+
+  .chip:hover { color: var(--ink); background: rgba(255, 255, 255, 0.08); }
+  .chip:active { transform: scale(0.97); }
+  .chip[aria-pressed="true"] { color: #fff; border-color: rgba(255, 255, 255, 0.42); background: rgba(255, 255, 255, 0.14); }
+
+  .dot { width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+
+  .swatches { display: inline-flex; gap: 6px; margin-left: 4px; }
+
+  .swatch {
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer; padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .swatch:hover { transform: translateY(-2px); }
+  .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 0 18px rgba(255, 255, 255, 0.35); }
+
+  /* ---------- 代码块 ---------- */
+  .snippet {
+    position: relative;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+
+  .snippet-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .copy {
+    font: inherit; font-size: 12px; letter-spacing: 0;
+    text-transform: none;
+    color: var(--muted);
+    background: transparent; border: 0; cursor: pointer;
+    padding: 4px 8px; border-radius: 8px;
+  }
+  .copy:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+  pre {
+    margin: 0;
+    padding: 18px 16px;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: rgba(226, 232, 240, 0.9);
+    tab-size: 2;
+  }
+
+  .k { color: #93c5fd; }
+  .a { color: #fbbf24; }
+  .s { color: #86efac; }
+  .c { color: rgba(148, 163, 184, 0.6); font-style: italic; }
+
+  /* ---------- 特性 ---------- */
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+
+  .feature {
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    display: grid; gap: 8px;
+  }
+  .feature b { font-size: 14px; font-weight: 500; }
+  .feature p { font-size: 12.5px; line-height: 1.65; color: var(--faint); }
+
+  /* ---------- 页脚 ---------- */
+  footer {
+    text-align: center;
+    font-size: 12.5px;
+    line-height: 1.9;
+    color: var(--faint);
+  }
+  footer a { color: var(--muted); text-decoration: none; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
+  footer a:hover { color: #fff; border-color: rgba(255, 255, 255, 0.5); }
+
+  @media (max-width: 560px) {
+    body { padding: 32px 14px 48px; }
+    .card { padding: 20px; border-radius: 22px; }
+    .hero { padding: 32px 18px 28px; }
+    .row { padding: 14px 12px; }
+  }
+</style>
+</head>
+<body data-wp="aurora">
+
+<div class="shell">
+
+  <header>
+    <span class="eyebrow">Pure CSS · Zero Dependency</span>
+    <h1>Liquid Glass Toggle</h1>
+    <p class="sub">
+      iOS 26 液态玻璃开关。按下时滑块由实心白凝固成一层薄玻璃——变宽、变矮、透出背景，
+      轮廓同步收紧贴合轨道内缘；松手后液体回弹，位移先到、形变后至。
+    </p>
+  </header>
+
+  <!-- Hero -->
+  <section class="card hero">
+    <div class="hero-stage">
+      <label class="lg-switch lg-switch--lg" data-demo="hero">
+        <input type="checkbox" checked aria-label="主开关" />
+        <span class="lg-switch__track">
+          <span class="lg-switch__thumb"></span>
+        </span>
+      </label>
+    </div>
+    <p class="state" id="heroState" data-on="1">状态 · <strong>ON</strong></p>
+    <p class="hint" id="heroHint">自动循环演示按下态 · 点一下开关即可接管</p>
+    <div class="controls">
+      <span class="chip" style="cursor:default">
+        强调色
+        <span class="swatches" role="group" aria-label="强调色">
+          <button class="swatch" data-accent="rgba(34, 180, 80, 0.55)" style="background:#22b450" aria-pressed="true" aria-label="绿色"></button>
+          <button class="swatch" data-accent="rgba(10, 132, 255, 0.6)" style="background:#0a84ff" aria-pressed="false" aria-label="蓝色"></button>
+          <button class="swatch" data-accent="rgba(124, 92, 255, 0.6)" style="background:#7c5cff" aria-pressed="false" aria-label="紫色"></button>
+          <button class="swatch" data-accent="rgba(255, 120, 60, 0.6)" style="background:#ff783c" aria-pressed="false" aria-label="橙色"></button>
+        </span>
+      </span>
+    </div>
+  </section>
+
+  <!-- 尺寸 -->
+  <section class="card">
+    <h2>尺寸变体</h2>
+    <div class="sizes">
+      <div class="size">
+        <label class="lg-switch lg-switch--sm">
+          <input type="checkbox" checked aria-label="小号开关" />
+          <span class="lg-switch__track"><span class="lg-switch__thumb"></span></span>
+        </label>
+        <span>72 × 40</span>
+      </div>
+      <div class="size">
+        <label class="lg-switch">
+          <input type="checkbox" checked aria-label="标准开关" />
+          <span class="lg-switch__track"><span class="lg-switch__thumb"></span></span>
+        </label>
+        <span>112 × 64 · 默认</span>
+      </div>
+      <div class="size">
+        <label class="lg-switch lg-switch--lg">
+          <input type="checkbox" checked aria-label="大号开关" />
+          <span class="lg-switch__track"><span class="lg-switch__thumb"></span></span>
+        </label>
+        <span>152 × 88</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 设置列表 -->
+  <section class="card">
+    <h2>设置项场景</h2>
+    <div class="rows">
+      <div class="row">
+        <span class="icon">✦</span>
+        <span class="row-label"><b>无线局域网</b><small>Home-5G</small></span>
+        <label class="lg-switch lg-switch--sm">
+          <input type="checkbox" checked aria-label="无线局域网" />
+          <span class="lg-switch__track"><span class="lg-switch__thumb"></span></span>
+        </label>
+      </div>
+      <div class="row">
+        <span class="icon">◎</span>
+        <span class="row-label"><b>蓝牙</b><small>已配对 2 台设备</small></span>
+        <label class="lg-switch lg-switch--sm">
+          <input type="checkbox" checked aria-label="蓝牙" />
+          <span class="lg-switch__track"><span class="lg-switch__thumb"></span></span>
+        </label>
+      </div>
+      <div class="row">
+        <span class="icon">☾</span>
+        <span class="row-label"><b>专注模式</b><small>22:30 – 07:00</small></span>
+        <label class="lg-switch lg-switch--sm">
+          <input type="checkbox" aria-label="专注模式" />
+          <span class="lg-switch__track"><span class="lg-switch__thumb"></span></span>
+        </label>
+      </div>
+      <div class="row">
+        <span class="icon">▣</span>
+        <span class="row-label"><b>低电量模式</b><small>关闭后恢复完整性能</small></span>
+        <label class="lg-switch lg-switch--sm">
+          <input type="checkbox" aria-label="低电量模式" />
+          <span class="lg-switch__track"><span class="lg-switch__thumb"></span></span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <!-- 用法 -->
+  <section class="card">
+    <h2>用法</h2>
+    <div class="snippet">
+      <div class="snippet-head">
+        <span>HTML</span>
+        <button class="copy" data-copy="markup">复制</button>
+      </div>
+<pre id="markup"><span class="c">&lt;!-- 引入 src/liquid-glass-toggle.css 后 --&gt;</span>
+<span class="k">&lt;label</span> <span class="a">class</span>=<span class="s">"lg-switch"</span><span class="k">&gt;</span>
+  <span class="k">&lt;input</span> <span class="a">type</span>=<span class="s">"checkbox"</span> <span class="a">checked</span> <span class="a">aria-label</span>=<span class="s">"开关"</span> <span class="k">/&gt;</span>
+  <span class="k">&lt;span</span> <span class="a">class</span>=<span class="s">"lg-switch__track"</span><span class="k">&gt;</span>
+    <span class="k">&lt;span</span> <span class="a">class</span>=<span class="s">"lg-switch__thumb"</span><span class="k">&gt;&lt;/span&gt;</span>
+  <span class="k">&lt;/span&gt;</span>
+<span class="k">&lt;/label&gt;</span></pre>
+    </div>
+
+    <div class="snippet" style="margin-top:16px">
+      <div class="snippet-head">
+        <span>自定义</span>
+        <button class="copy" data-copy="css">复制</button>
+      </div>
+<pre id="css"><span class="c">/* 强调色 */</span>
+<span class="k">.lg-switch</span> { <span class="a">--lg-accent</span>: <span class="s">rgba(10, 132, 255, 0.6)</span>; }
+
+<span class="c">/* 任意尺寸：只需给宽度 / 高度 / 滑块宽度，位移与形变自动推导 */</span>
+<span class="k">.lg-switch--xl</span> {
+  <span class="a">--lg-w</span>: <span class="s">200px</span>;
+  <span class="a">--lg-h</span>: <span class="s">116px</span>;
+  <span class="a">--lg-thumb-w</span>: <span class="s">116px</span>;
+}</pre>
+    </div>
+  </section>
+
+  <!-- 特性 -->
+  <section class="card">
+    <h2>实现要点</h2>
+    <div class="features">
+      <div class="feature"><b>两段式时序</b><p>位移先走 0.35s 弹簧曲线，宽高形变延迟 0.22s 才发生——这就是"液体被拖拽后回弹"的观感来源。</p></div>
+      <div class="feature"><b>轮廓贴合</b><p>outline-offset 取负值让描边画在元素内侧，形变时描边随形状一起收缩，不会溢出。</p></div>
+      <div class="feature"><b>压力玻璃</b><p>按下时 backdrop-filter 从无到 blur(24px) saturate(160%)，配合多层 inset 高光透出底层壁纸。</p></div>
+      <div class="feature"><b>尺寸自推导</b><p>位移 = 宽 − 滑块宽 − 内边距×2，按下位移 = 位移 − 6px，所有变体共用一套公式。</p></div>
+      <div class="feature"><b>原生可访问</b><p>真实 checkbox 驱动，键盘 Tab / 空格可用，focus-visible 有独立焦点环。</p></div>
+      <div class="feature"><b>降级与省电</b><p>不支持 backdrop-filter 时回退实色底；prefers-reduced-motion 下关闭形变过渡。</p></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>切换壁纸 · 玻璃需要背景才有可折射的内容</h2>
+    <div class="controls">
+      <button class="chip" data-wp="aurora" aria-pressed="true"><span class="dot" style="background:linear-gradient(135deg,#7c5cff,#00c8ff)"></span>Aurora</button>
+      <button class="chip" data-wp="sunset" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#ff8a3d,#ff3d81)"></span>Sunset</button>
+      <button class="chip" data-wp="forest" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#00d68f,#00a8ff)"></span>Forest</button>
+      <button class="chip" data-wp="mono" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#ffffff,#888)"></span>Mono</button>
+    </div>
+  </section>
+
+  <footer>
+    Liquid Glass Toggle · 纯 CSS 单文件组件<br />
+    <a href="https://github.com/OStarsO/liquid-glass-toggle">GitHub 仓库</a> ·
+    许可证：非商业使用（Non-Commercial）· 禁止任何商业用途
+  </footer>
+
+</div>
+
+<script>
+  // Hero 状态文字 + 自动循环演示按下态
+  const hero = document.querySelector('[data-demo="hero"]');
+  const heroInput = hero.querySelector('input');
+  const state = document.getElementById('heroState');
+  const hint = document.getElementById('heroHint');
+  let demoOwned = true;
+
+  function syncHero() {
+    const on = heroInput.checked;
+    state.dataset.on = on ? '1' : '0';
+    state.innerHTML = '状态 · <strong>' + (on ? 'ON' : 'OFF') + '</strong>';
+  }
+
+  hero.addEventListener('change', syncHero);
+
+  ['pointerdown', 'keydown'].forEach((evt) => {
+    hero.addEventListener(evt, () => {
+      demoOwned = false;
+      hint.textContent = '已接管 · 自己按一按看看液态回弹';
+    }, { once: true });
+  });
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduceMotion) {
+    setInterval(() => {
+      if (!demoOwned) return;
+      hero.classList.add('is-pressing');
+      setTimeout(() => {
+        hero.classList.remove('is-pressing');
+        if (!demoOwned) return;
+        heroInput.checked = !heroInput.checked;
+        syncHero();
+      }, 260);
+    }, 3200);
+  }
+
+  // 强调色
+  document.querySelectorAll('.swatch').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const value = btn.dataset.accent;
+      document.querySelectorAll('.lg-switch').forEach((el) => el.style.setProperty('--lg-accent', value));
+      document.querySelectorAll('.swatch').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+    });
+  });
+
+  // 壁纸
+  document.querySelectorAll('[data-wp]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.body.dataset.wp = btn.dataset.wp;
+      document.querySelectorAll('[data-wp]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+    });
+  });
+
+  // 复制
+  document.querySelectorAll('.copy').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const text = document.getElementById(btn.dataset.copy).innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        const label = btn.textContent;
+        btn.textContent = '已复制';
+        setTimeout(() => { btn.textContent = label; }, 1400);
+      } catch (_) {
+        btn.textContent = '复制失败';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
