@@ -1,0 +1,194 @@
+/* ==========================================================================
+   Liquid Glass Toggle —— iOS 26 风格液态玻璃开关
+   纯 CSS，零依赖。按下时滑块液化收缩、玻璃化并贴合轨道内边缘。
+   许可证：Non-Commercial（见 LICENSE / README）
+   ========================================================================== */
+
+.lg-switch {
+  /* ---- 尺寸 ---- */
+  --lg-w: 112px;
+  --lg-h: 64px;
+  --lg-thumb-w: 64px;
+  --lg-pad: 4px;
+  --lg-border: 1px;
+
+  /* ---- 配色 ---- */
+  --lg-accent: rgba(34, 180, 80, 0.55);
+  --lg-accent-stroke: rgba(255, 255, 255, 0.22);
+
+  /* ---- 派生量（不要手改） ---- */
+  /* 轨道内容宽 = W - 边框×2，滑块位移到最右时左右各留 --lg-pad */
+  --lg-travel: calc(var(--lg-w) - var(--lg-thumb-w) - var(--lg-pad) * 2 - var(--lg-border) * 2);
+  --lg-thumb-h: calc(var(--lg-h) - var(--lg-pad) * 2 - 8px);
+  --lg-press: 6px;
+  --lg-press-shorten: 8px;
+
+  position: relative;
+  display: inline-block;
+  width: var(--lg-w);
+  height: var(--lg-h);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* 尺寸变体 */
+.lg-switch--sm {
+  --lg-w: 72px;
+  --lg-h: 40px;
+  --lg-thumb-w: 40px;
+}
+
+.lg-switch--lg {
+  --lg-w: 152px;
+  --lg-h: 88px;
+  --lg-thumb-w: 88px;
+}
+
+/* 原生 checkbox：可聚焦、可键盘操作，视觉完全隐藏 */
+.lg-switch > input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+}
+
+/* ---- 轨道 ---- */
+.lg-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  border: var(--lg-border) solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -10px 24px rgba(0, 0, 0, 0.45),
+    0 16px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  overflow: hidden;
+  transition:
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s ease;
+  pointer-events: none;
+}
+
+/* 玻璃高光：上缘亮带 + 左右侧向反光 */
+.lg-switch__track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02) 38%, transparent 42%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent 20%, transparent 80%, rgba(255, 255, 255, 0.05));
+}
+
+.lg-switch > input:checked + .lg-switch__track {
+  background: var(--lg-accent);
+  border-color: var(--lg-accent-stroke);
+}
+
+/* ---- 滑块 ---- */
+.lg-switch__thumb {
+  position: absolute;
+  top: 50%;
+  left: var(--lg-pad);
+  width: var(--lg-thumb-w);
+  height: var(--lg-thumb-h);
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 24px rgba(0, 0, 0, 0.35),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.08);
+  /* 常态：轮廓向内贴合白色边缘 */
+  outline: 1.5px solid rgba(255, 255, 255, 0.45);
+  outline-offset: -1.5px;
+  z-index: 2;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  will-change: transform, width, height;
+
+  /* 位移先走，形变后到，模拟液体被拖拽后回弹 */
+  transition:
+    transform 0.35s cubic-bezier(0.34, 1.42, 0.64, 1) 0s,
+    width 0.2s cubic-bezier(0.34, 1.42, 0.64, 1) 0.22s,
+    height 0.2s cubic-bezier(0.34, 1.42, 0.64, 1) 0.22s,
+    background 0.18s ease 0.22s,
+    box-shadow 0.18s ease 0.22s,
+    backdrop-filter 0.18s ease 0.22s,
+    outline 0.18s ease 0.22s,
+    outline-offset 0.18s ease 0.22s;
+}
+
+.lg-switch > input:checked + .lg-switch__track .lg-switch__thumb {
+  transform: translate(var(--lg-travel), -50%);
+}
+
+/* 按下：液化——变宽变矮、透出背景、内发光、轮廓同步收紧
+   .is-pressing 供脚本/演示复用同一套按下态 */
+.lg-switch:active .lg-switch__thumb,
+.lg-switch.is-pressing .lg-switch__thumb {
+  width: calc(var(--lg-thumb-w) + var(--lg-press));
+  height: calc(var(--lg-thumb-h) - var(--lg-press-shorten));
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -10px 22px rgba(255, 255, 255, 0.18),
+    inset 0 0 28px rgba(255, 255, 255, 0.12),
+    0 12px 30px rgba(0, 0, 0, 0.35);
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+  outline-offset: -1px;
+  transition:
+    transform 0.12s ease 0s,
+    width 0.12s ease 0s,
+    height 0.12s ease 0s,
+    background 0.12s ease 0s,
+    box-shadow 0.12s ease 0s,
+    backdrop-filter 0.12s ease 0s,
+    outline 0.12s ease 0s,
+    outline-offset 0.12s ease 0s;
+}
+
+/* 按下 + 开启：位移随宽度收缩一起回退，右侧始终贴合 */
+.lg-switch:active > input:checked + .lg-switch__track .lg-switch__thumb,
+.lg-switch.is-pressing > input:checked + .lg-switch__track .lg-switch__thumb {
+  transform: translate(calc(var(--lg-travel) - var(--lg-press)), -50%);
+}
+
+/* ---- 可达性 ---- */
+.lg-switch > input:focus-visible + .lg-switch__track {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-switch__track,
+  .lg-switch__thumb,
+  .lg-switch:active .lg-switch__thumb,
+  .lg-switch.is-pressing .lg-switch__thumb {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}
+
+/* 不支持 backdrop-filter 时，用更实的底色兜底 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lg-switch__track {
+    background: rgba(20, 22, 28, 0.72);
+  }
+  .lg-switch:active .lg-switch__thumb {
+    background: rgba(60, 64, 74, 0.85);
+  }
+}

@@ -1,0 +1,13 @@
+# System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Node（如果你要加构建流程）
+node_modules/
+dist/
