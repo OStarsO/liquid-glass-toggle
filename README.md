@@ -8,13 +8,22 @@
 [![License: Non-Commercial](https://img.shields.io/badge/license-Non--Commercial-red.svg)](#许可证)
 [![Pure CSS](https://img.shields.io/badge/pure-CSS-4f9cf9.svg)](#)
 [![No dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#)
+[![Deploy](https://github.com/OStarsO/liquid-glass-toggle/actions/workflows/pages.yml/badge.svg)](https://github.com/OStarsO/liquid-glass-toggle/actions/workflows/pages.yml)
 
 <img src="docs/preview.svg" alt="Liquid Glass Toggle 预览：开启 / 按下液化 / 关闭三态" width="100%" />
 
 ## 预览
 
-- 在线演示：**https://ostarso.github.io/liquid-glass-toggle/**（开启 Pages 后生效）
-- 本地预览：直接双击 `index.html`，或 `python -m http.server` 后访问 `http://localhost:8000`
+**即时在线预览（无需任何配置）**
+https://raw.githack.com/OStarsO/liquid-glass-toggle/main/index.html
+
+**GitHub Pages**
+https://ostarso.github.io/liquid-glass-toggle/
+— 需先在仓库 `Settings → Pages → Source` 选择 **GitHub Actions**，之后每次 push 自动部署。
+未启用时部署流水线会自动跳过，不会报错。
+
+**本地预览**
+直接双击 `index.html`；或 `python -m http.server 8000` 后访问 `http://localhost:8000`。
 
 演示页包含：主开关（自动循环演示按下态）、三种尺寸变体、设置项场景、强调色切换、
 四款壁纸（玻璃需要背景才有可折射的内容）。

@@ -7,27 +7,54 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
+  # Pages 启用需要仓库管理员权限，GITHUB_TOKEN 拿不到。
+  # 所以先探测状态：未启用 / 用分支构建时静默跳过，不让流水线变红。
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.state.outputs.mode }}
+    steps:
+      - name: Read Pages configuration
+        id: state
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { data } = await github.rest.repos.getPages({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              core.info(`Pages 已启用，build_type=${data.build_type}`);
+              core.setOutput('mode', data.build_type === 'workflow' ? 'actions' : 'branch');
+            } catch (error) {
+              core.info(`Pages 尚未启用（HTTP ${error.status}），跳过部署。`);
+              core.info('在 Settings → Pages → Source 选择 GitHub Actions 后，推送即自动部署。');
+              core.setOutput('mode', 'disabled');
+            }
+
   deploy:
+    needs: detect
+    if: needs.detect.outputs.mode == 'actions'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
